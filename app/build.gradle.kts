@@ -1,12 +1,20 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.ksp)
 }
 
 android {
     namespace = "com.aqtanb.tronchecker"
     compileSdk = 35
+    val localProperties = Properties()
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        localProperties.load(localPropertiesFile.inputStream())
+    }
 
     defaultConfig {
         applicationId = "com.aqtanb.tronchecker"
@@ -16,6 +24,12 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField(
+            "String",
+            "TRONGRID_API_KEY",
+            "\"${localProperties.getProperty("TRONGRID_API_KEY", "")}\""
+        )
     }
 
     buildTypes {
@@ -35,9 +49,11 @@ android {
         jvmTarget = "11"
     }
     buildFeatures {
+        buildConfig = true
         compose = true
     }
 }
+
 
 dependencies {
 
@@ -56,4 +72,24 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+
+    // Networking
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.gson)
+    implementation(libs.okhttp.logging)
+
+    // Database
+    implementation(libs.room.runtime)
+    implementation(libs.room.ktx)
+    ksp(libs.room.compiler)
+
+    // Dependency Injection
+    implementation(libs.koin.android)
+    implementation(libs.koin.compose)
+
+    // Coroutines
+    implementation(libs.kotlinx.coroutines)
+
+    // Date handling
+    implementation(libs.kotlinx.datetime)
 }
