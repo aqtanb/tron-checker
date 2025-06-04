@@ -26,8 +26,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.aqtanb.tronchecker.data.model.TransactionType
-import com.aqtanb.tronchecker.data.repository.TransactionFilters
+import com.aqtanb.tronchecker.domain.model.TransactionType
+import com.aqtanb.tronchecker.domain.repository.TransactionFilters
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

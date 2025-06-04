@@ -1,4 +1,4 @@
-package com.aqtanb.tronchecker.data.model
+package com.aqtanb.tronchecker.domain.model
 
 enum class TransactionType(val displayName: String) {
     ALL("All"),

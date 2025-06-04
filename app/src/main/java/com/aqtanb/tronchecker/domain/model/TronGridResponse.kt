@@ -1,4 +1,4 @@
-package com.aqtanb.tronchecker.data.model
+package com.aqtanb.tronchecker.domain.model
 
 data class TronGridResponse(
     val data: List<TronTransactionRaw>,

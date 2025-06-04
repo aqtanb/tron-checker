@@ -1,8 +1,8 @@
-package com.aqtanb.tronchecker.data.repository
+package com.aqtanb.tronchecker.domain.repository
 
-import com.aqtanb.tronchecker.data.model.TransactionStatus
-import com.aqtanb.tronchecker.data.model.TransactionType
-import com.aqtanb.tronchecker.data.model.TronTransaction
+import com.aqtanb.tronchecker.domain.model.TransactionStatus
+import com.aqtanb.tronchecker.domain.model.TransactionType
+import com.aqtanb.tronchecker.domain.model.TronTransaction
 import kotlinx.coroutines.flow.Flow
 
 interface TransactionRepository {

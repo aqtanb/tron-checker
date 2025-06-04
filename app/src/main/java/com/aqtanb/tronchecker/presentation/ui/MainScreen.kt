@@ -11,6 +11,7 @@ fun MainScreen(
     viewModel: TransactionViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val recentSearches by viewModel.recentSearches.collectAsState(initial = emptyList())
 
     if (uiState.showTransactions) {
         TransactionListScreen(
@@ -25,9 +26,12 @@ fun MainScreen(
             walletAddress = uiState.walletAddress,
             filters = uiState.filters,
             isLoading = uiState.isLoading,
+            recentSearches = recentSearches,
             onAddressChange = viewModel::updateAddress,
             onFiltersChange = viewModel::updateFilters,
-            onLoadClick = viewModel::loadTransactions
+            onLoadClick = viewModel::loadTransactions,
+            onRecentClick = viewModel::selectRecentSearch,
+            onDeleteRecent = viewModel::deleteRecentSearch
         )
     }
 }

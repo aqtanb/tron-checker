@@ -24,7 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.aqtanb.tronchecker.data.model.TronTransaction
+import com.aqtanb.tronchecker.domain.model.TronTransaction
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
