@@ -10,9 +10,6 @@ interface TronGridApi {
     suspend fun getTransactions(
         @Path("address") address: String,
         @Query("limit") limit: Int = 20,
-        @Query("fingerprint") fingerprint: String? = null,
-        @Query("only_confirmed") onlyConfirmed: Boolean = false,
-        @Query("min_timestamp") minTimestamp: Long? = null,
-        @Query("max_timestamp") maxTimestamp: Long? = null
+        @Query("fingerprint") fingerprint: String? = null
     ): TronGridResponse
 }
