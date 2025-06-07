@@ -2,6 +2,7 @@ package com.aqtanb.tronchecker.data.database.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.aqtanb.tronchecker.domain.model.TransactionStatus
 import com.aqtanb.tronchecker.domain.model.TronTransaction
 
 @Entity(tableName = "transactions")
@@ -10,39 +11,33 @@ data class TransactionEntity(
     val txID: String,
     val walletAddress: String,
     val blockNumber: Long,
-    val timestamp: Long,
     val fromAddress: String,
     val toAddress: String,
-    val amount: String?,
+    val displayAmount: String,
+    val status: String,
     val type: String,
-    val confirmed: Boolean,
-    val contractRet: String?,
-    val fee: Long?
+    val rawAmount: Long?
 )
 
 fun TransactionEntity.toDomain() = TronTransaction(
     txID = txID,
     blockNumber = blockNumber,
-    timestamp = timestamp,
     from = fromAddress,
     to = toAddress,
-    amount = amount,
+    displayAmount = displayAmount,
+    status = TransactionStatus.valueOf(status),
     type = type,
-    confirmed = confirmed,
-    contractRet = contractRet,
-    fee = fee
+    rawAmount = rawAmount
 )
 
 fun TronTransaction.toEntity(walletAddress: String) = TransactionEntity(
     txID = txID,
     walletAddress = walletAddress,
     blockNumber = blockNumber,
-    timestamp = timestamp,
     fromAddress = from,
     toAddress = to,
-    amount = amount,
+    displayAmount = displayAmount,
+    status = status.name,
     type = type,
-    confirmed = confirmed,
-    contractRet = contractRet,
-    fee = fee
+    rawAmount = rawAmount
 )

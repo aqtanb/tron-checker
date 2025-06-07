@@ -1,7 +1,6 @@
 package com.aqtanb.tronchecker.domain.repository
 
-import com.aqtanb.tronchecker.domain.model.TransactionStatus
-import com.aqtanb.tronchecker.domain.model.TransactionType
+import com.aqtanb.tronchecker.domain.model.TransactionFilters
 import com.aqtanb.tronchecker.domain.model.TronTransaction
 import kotlinx.coroutines.flow.Flow
 
@@ -16,12 +15,3 @@ interface TransactionRepository {
     suspend fun getCachedTransactions(address: String): List<TronTransaction>
     suspend fun clearCache(address: String)
 }
-
-data class TransactionFilters(
-    val type: TransactionType = TransactionType.ALL,
-    val minAmount: Double? = null,
-    val maxAmount: Double? = null,
-    val startDate: Long? = null,
-    val endDate: Long? = null,
-    val status: TransactionStatus? = null
-)

@@ -4,8 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aqtanb.tronchecker.data.database.dao.SearchHistoryDao
 import com.aqtanb.tronchecker.data.database.entity.SearchHistoryEntity
+import com.aqtanb.tronchecker.domain.model.TransactionFilters
 import com.aqtanb.tronchecker.domain.model.TronTransaction
-import com.aqtanb.tronchecker.domain.repository.TransactionFilters
 import com.aqtanb.tronchecker.domain.usecase.GetTransactionsUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

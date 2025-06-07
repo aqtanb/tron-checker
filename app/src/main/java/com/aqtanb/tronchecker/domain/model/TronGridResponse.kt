@@ -7,8 +7,6 @@ data class TronGridResponse(
 )
 
 data class Meta(
-    val at: Long,
-    val page_size: Int,
     val fingerprint: String? = null
 )
 
@@ -21,8 +19,7 @@ data class TronTransactionRaw(
 )
 
 data class RawData(
-    val contract: List<Contract>,
-    val timestamp: Long
+    val contract: List<Contract>
 )
 
 data class Contract(
@@ -31,18 +28,13 @@ data class Contract(
 )
 
 data class Parameter(
-    val value: Value,
-    val type_url: String
+    val value: Value
 )
 
 data class Value(
     val amount: Long? = null,
     val owner_address: String? = null,
-    val to_address: String? = null,
-    val contract_address: String? = null,
-    val data: String? = null,
-    val asset_name: String? = null,
-    val token_id: String? = null
+    val to_address: String? = null
 )
 
 data class Ret(

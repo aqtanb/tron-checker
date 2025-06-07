@@ -8,11 +8,11 @@ import com.aqtanb.tronchecker.data.database.entity.TransactionEntity
 
 @Dao
 interface TransactionDao {
-    @Query("SELECT * FROM transactions WHERE walletAddress = :address ORDER BY timestamp DESC")
-    suspend fun getTransactionsByAddress(address: String): List<TransactionEntity>
-
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTransactions(transactions: List<TransactionEntity>)
+
+    @Query("SELECT * FROM transactions WHERE walletAddress = :address ORDER BY blockNumber DESC")
+    suspend fun getTransactionsByAddress(address: String): List<TransactionEntity>
 
     @Query("DELETE FROM transactions WHERE walletAddress = :address")
     suspend fun deleteTransactionsByAddress(address: String)

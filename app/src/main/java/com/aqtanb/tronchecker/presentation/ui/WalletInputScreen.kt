@@ -30,7 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.aqtanb.tronchecker.data.database.entity.SearchHistoryEntity
-import com.aqtanb.tronchecker.domain.repository.TransactionFilters
+import com.aqtanb.tronchecker.domain.model.TransactionFilters
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

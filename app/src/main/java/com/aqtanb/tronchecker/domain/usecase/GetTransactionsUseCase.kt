@@ -1,7 +1,7 @@
 package com.aqtanb.tronchecker.domain.usecase
 
+import com.aqtanb.tronchecker.domain.model.TransactionFilters
 import com.aqtanb.tronchecker.domain.model.TronTransaction
-import com.aqtanb.tronchecker.domain.repository.TransactionFilters
 import com.aqtanb.tronchecker.domain.repository.TransactionRepository
 import kotlinx.coroutines.flow.Flow
 

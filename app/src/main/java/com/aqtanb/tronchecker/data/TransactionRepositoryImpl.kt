@@ -4,9 +4,10 @@ import com.aqtanb.tronchecker.data.api.TronGridApi
 import com.aqtanb.tronchecker.data.database.dao.TransactionDao
 import com.aqtanb.tronchecker.data.database.entity.toDomain
 import com.aqtanb.tronchecker.data.database.entity.toEntity
+import com.aqtanb.tronchecker.domain.model.TransactionFilters
+import com.aqtanb.tronchecker.domain.model.TransactionStatus
 import com.aqtanb.tronchecker.domain.model.TransactionType
 import com.aqtanb.tronchecker.domain.model.TronTransaction
-import com.aqtanb.tronchecker.domain.repository.TransactionFilters
 import com.aqtanb.tronchecker.domain.repository.TransactionRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
@@ -33,28 +34,33 @@ class TransactionRepositoryImpl(
                 val transactions = response.data.map { raw ->
                     val contract = raw.raw_data.contract.firstOrNull()
                     val value = contract?.parameter?.value
-
-                    val fromAddress = value?.owner_address ?: ""
-                    val toAddress = value?.to_address ?: ""
-                    val amountString = value?.amount?.toString()
-                    val contractType = contract?.type ?: ""
                     val firstRet = raw.ret?.firstOrNull()
+
+                    val displayAmount = when {
+                        value?.amount != null -> {
+                            val trx = value.amount / 1_000_000.0
+                            "${"%.6f".format(trx).trimEnd('0').trimEnd('.')} TRX"
+                        }
+                        else -> "Contract Call"
+                    }
+
+                    val status = when {
+                        firstRet?.contractRet == "SUCCESS" || firstRet?.contractRet == null -> TransactionStatus.SUCCESS
+                        else -> TransactionStatus.FAILED
+                    }
 
                     TronTransaction(
                         txID = raw.txID,
                         blockNumber = raw.blockNumber,
-                        timestamp = raw.block_timestamp,
-                        from = fromAddress,
-                        to = toAddress,
-                        amount = amountString,
-                        tokenInfo = null,
-                        type = contractType,
-                        confirmed = firstRet?.contractRet == "SUCCESS",
-                        contractRet = firstRet?.contractRet,
-                        fee = firstRet?.fee,
-                        walletAddress = address
+                        from = value?.owner_address ?: "",
+                        to = value?.to_address ?: "",
+                        displayAmount = displayAmount,
+                        status = status,
+                        type = contract?.type ?: "",
+                        rawAmount = value?.amount
                     )
                 }.filter { applyFilters(it, filters) }
+
                 if (fingerprint == null) {
                     transactionDao.deleteTransactionsByAddress(address)
                     transactionDao.insertTransactions(
@@ -86,8 +92,13 @@ class TransactionRepositoryImpl(
         }
     }
 
-    override suspend fun getCachedTransactions(address: String) = emptyList<TronTransaction>()
-    override suspend fun clearCache(address: String) {}
+    override suspend fun getCachedTransactions(address: String): List<TronTransaction> {
+        return transactionDao.getTransactionsByAddress(address).map { it.toDomain() }
+    }
+
+    override suspend fun clearCache(address: String) {
+        transactionDao.deleteTransactionsByAddress(address)
+    }
 
     private fun applyFilters(transaction: TronTransaction, filters: TransactionFilters): Boolean {
         if (filters.type != TransactionType.ALL) {
@@ -99,7 +110,7 @@ class TransactionRepositoryImpl(
         }
 
         if (filters.minAmount != null || filters.maxAmount != null) {
-            val amount = transaction.amount?.toLongOrNull()?.div(1_000_000.0) ?: 0.0
+            val amount = transaction.rawAmount?.div(1_000_000.0) ?: 0.0
             if (filters.minAmount != null && amount < filters.minAmount) return false
             if (filters.maxAmount != null && amount > filters.maxAmount) return false
         }

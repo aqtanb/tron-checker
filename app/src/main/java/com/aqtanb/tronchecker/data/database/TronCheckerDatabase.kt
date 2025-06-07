@@ -11,7 +11,7 @@ import com.aqtanb.tronchecker.data.database.entity.TransactionEntity
 
 @Database(
     entities = [SearchHistoryEntity::class, TransactionEntity::class],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class TronCheckerDatabase : RoomDatabase() {
@@ -25,10 +25,10 @@ abstract class TronCheckerDatabase : RoomDatabase() {
         fun getInstance(context: Context): TronCheckerDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
-                                context.applicationContext,
-                                TronCheckerDatabase::class.java,
-                                "tron_database"
-                            ).build()
+                                            context.applicationContext,
+                                            TronCheckerDatabase::class.java,
+                                            "tron_database"
+                                        ).fallbackToDestructiveMigration(true).build()
                 INSTANCE = instance
                 instance
             }
