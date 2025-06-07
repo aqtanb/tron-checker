@@ -18,6 +18,7 @@ fun MainScreen(
             transactions = uiState.transactions,
             isLoading = uiState.isLoading,
             hasMore = uiState.hasMore,
+            detectedNetwork = uiState.detectedNetwork,
             onLoadMore = viewModel::loadMore,
             onBack = viewModel::goBack
         )

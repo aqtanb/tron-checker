@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.aqtanb.tronchecker.data.database.dao.SearchHistoryDao
 import com.aqtanb.tronchecker.data.database.entity.SearchHistoryEntity
 import com.aqtanb.tronchecker.domain.model.TransactionFilters
+import com.aqtanb.tronchecker.domain.model.TronNetwork
 import com.aqtanb.tronchecker.domain.model.TronTransaction
 import com.aqtanb.tronchecker.domain.usecase.GetTransactionsUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -56,12 +57,14 @@ class TransactionViewModel(
                     onSuccess = { (newTransactions, fingerprint) ->
                         currentFingerprint = fingerprint
                         allTransactions.addAll(newTransactions)
+                        val network = getTransactionsUseCase.getCurrentNetwork()
                         _uiState.update { state ->
                             state.copy(
                                 transactions = allTransactions.toList(),
                                 isLoading = false,
                                 showTransactions = true,
-                                hasMore = fingerprint != null
+                                hasMore = fingerprint != null,
+                                detectedNetwork = network
                             )
                         }
                     },
@@ -131,5 +134,6 @@ data class TransactionUiState(
     val isLoading: Boolean = false,
     val filters: TransactionFilters = TransactionFilters(),
     val showTransactions: Boolean = false,
-    val hasMore: Boolean = true
+    val hasMore: Boolean = true,
+    val detectedNetwork: TronNetwork? = null
 )

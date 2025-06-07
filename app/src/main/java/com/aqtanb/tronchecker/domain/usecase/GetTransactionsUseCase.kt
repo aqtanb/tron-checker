@@ -16,4 +16,6 @@ class GetTransactionsUseCase(
     ): Flow<Result<Pair<List<TronTransaction>, String?>>> {
         return repository.getTransactions(address, limit, fingerprint, filters)
     }
+
+    suspend fun getCurrentNetwork() = repository.getCurrentNetwork()
 }

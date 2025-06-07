@@ -1,23 +1,24 @@
 package com.aqtanb.tronchecker.data
 
-import com.aqtanb.tronchecker.data.api.TronGridApi
 import com.aqtanb.tronchecker.data.database.dao.TransactionDao
 import com.aqtanb.tronchecker.data.database.entity.toDomain
 import com.aqtanb.tronchecker.data.database.entity.toEntity
 import com.aqtanb.tronchecker.domain.model.TransactionFilters
 import com.aqtanb.tronchecker.domain.model.TransactionStatus
 import com.aqtanb.tronchecker.domain.model.TransactionType
+import com.aqtanb.tronchecker.domain.model.TronNetwork
 import com.aqtanb.tronchecker.domain.model.TronTransaction
+import com.aqtanb.tronchecker.domain.repository.NetworkRepository
 import com.aqtanb.tronchecker.domain.repository.TransactionRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.flow
 
 class TransactionRepositoryImpl(
-    private val api: TronGridApi,
+    private val networkRepository: NetworkRepository,
     private val transactionDao: TransactionDao
 ) : TransactionRepository {
-
+    private val networkCache = mutableMapOf<String, TronNetwork>()
     override fun getTransactions(
         address: String,
         limit: Int,
@@ -25,11 +26,19 @@ class TransactionRepositoryImpl(
         filters: TransactionFilters
     ): Flow<Result<Pair<List<TronTransaction>, String?>>> = flow {
         try {
+            val currentNetwork = networkCache[address] ?: let {
+                val detected = networkRepository.detectNetwork(address)
+                networkCache[address] = detected
+                detected
+            }
+
+            val api = networkRepository.getApiForNetwork(currentNetwork)
             val response = api.getTransactions(
                 address = address,
                 limit = limit,
                 fingerprint = fingerprint
             )
+
             if (response.success) {
                 val transactions = response.data.map { raw ->
                     val contract = raw.raw_data.contract.firstOrNull()
@@ -98,7 +107,10 @@ class TransactionRepositoryImpl(
 
     override suspend fun clearCache(address: String) {
         transactionDao.deleteTransactionsByAddress(address)
+        networkCache.remove(address)
     }
+
+    override suspend fun getCurrentNetwork(): TronNetwork? = networkCache.values.lastOrNull()
 
     private fun applyFilters(transaction: TronTransaction, filters: TransactionFilters): Boolean {
         if (filters.type != TransactionType.ALL) {
