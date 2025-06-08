@@ -3,6 +3,7 @@ package com.aqtanb.tronchecker.data.database.entity
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.aqtanb.tronchecker.domain.model.TransactionStatus
+import com.aqtanb.tronchecker.domain.model.TransactionType
 import com.aqtanb.tronchecker.domain.model.TronTransaction
 
 @Entity(tableName = "transactions")
@@ -26,7 +27,7 @@ fun TransactionEntity.toDomain() = TronTransaction(
     to = toAddress,
     displayAmount = displayAmount,
     status = TransactionStatus.valueOf(status),
-    type = type,
+    type = TransactionType.valueOf(type),
     rawAmount = rawAmount
 )
 
@@ -38,6 +39,6 @@ fun TronTransaction.toEntity(walletAddress: String) = TransactionEntity(
     toAddress = to,
     displayAmount = displayAmount,
     status = status.name,
-    type = type,
+    type = type.name,
     rawAmount = rawAmount
 )

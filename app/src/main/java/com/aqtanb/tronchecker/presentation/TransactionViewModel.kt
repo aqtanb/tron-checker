@@ -35,21 +35,24 @@ class TransactionViewModel(
         _uiState.update { it.copy(filters = filters) }
     }
 
-    fun loadTransactions() {
+    fun loadTransactions(onSuccess: () -> Unit = {}) {
         if (_uiState.value.isLoading) return
 
+        val address = _uiState.value.walletAddress
+        if (address.isBlank()) return
+
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            _uiState.update { it.copy(isLoading = true, error = null) }
 
             searchHistoryDao.insertSearch(
-                SearchHistoryEntity(address = _uiState.value.walletAddress)
+                SearchHistoryEntity(address = address)
             )
 
             currentFingerprint = null
             allTransactions.clear()
 
             getTransactionsUseCase(
-                address = _uiState.value.walletAddress,
+                address = address,
                 fingerprint = currentFingerprint,
                 filters = _uiState.value.filters
             ).collect { result ->
@@ -62,14 +65,20 @@ class TransactionViewModel(
                             state.copy(
                                 transactions = allTransactions.toList(),
                                 isLoading = false,
-                                showTransactions = true,
                                 hasMore = fingerprint != null,
-                                detectedNetwork = network
+                                detectedNetwork = network,
+                                error = null
                             )
                         }
+                        onSuccess()
                     },
-                    onFailure = {
-                        _uiState.update { it.copy(isLoading = false) }
+                    onFailure = { error ->
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                error = "Failed to load transactions"
+                            )
+                        }
                     }
                 )
             }
@@ -107,9 +116,9 @@ class TransactionViewModel(
         }
     }
 
-    fun selectRecentSearch(address: String) {
+    fun selectRecentSearch(address: String, onSuccess: () -> Unit) {
         _uiState.update { it.copy(walletAddress = address) }
-        loadTransactions()
+        loadTransactions(onSuccess)
     }
 
     fun deleteRecentSearch(address: String) {
@@ -118,13 +127,12 @@ class TransactionViewModel(
         }
     }
 
-    fun goBack() {
-        _uiState.update { it.copy(
-            showTransactions = false,
-            transactions = emptyList()
-        ) }
-        currentFingerprint = null
-        allTransactions.clear()
+    fun clearAddress() {
+        _uiState.update { it.copy(walletAddress = "") }
+    }
+
+    fun clearError() {
+        _uiState.update { it.copy(error = null) }
     }
 }
 
@@ -133,7 +141,7 @@ data class TransactionUiState(
     val transactions: List<TronTransaction> = emptyList(),
     val isLoading: Boolean = false,
     val filters: TransactionFilters = TransactionFilters(),
-    val showTransactions: Boolean = false,
     val hasMore: Boolean = true,
-    val detectedNetwork: TronNetwork? = null
+    val detectedNetwork: TronNetwork? = null,
+    val error: String? = null
 )

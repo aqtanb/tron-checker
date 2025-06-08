@@ -7,7 +7,7 @@ data class TronTransaction(
     val to: String,
     val displayAmount: String,
     val status: TransactionStatus,
-    val type: String,
+    val type: TransactionType,
     val rawAmount: Long?
 )
 

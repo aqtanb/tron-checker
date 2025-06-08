@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import com.aqtanb.tronchecker.presentation.ui.MainScreen
+import com.aqtanb.tronchecker.presentation.TronCheckerApp
 import com.aqtanb.tronchecker.ui.theme.TronCheckerTheme
 
 class MainActivity : ComponentActivity() {
@@ -19,7 +19,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    MainScreen()
+                    TronCheckerApp()
                 }
             }
         }

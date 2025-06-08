@@ -10,7 +10,7 @@ class GetTransactionsUseCase(
 ) {
     operator fun invoke(
         address: String,
-        limit: Int = 20,
+        limit: Int = 200,
         fingerprint: String? = null,
         filters: TransactionFilters = TransactionFilters()
     ): Flow<Result<Pair<List<TronTransaction>, String?>>> {
