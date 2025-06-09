@@ -37,8 +37,8 @@ class TransactionRepositoryImpl(
                 detected
             }
 
-            val api = networkRepository.getApiForNetwork(currentNetwork)
-            val response = api.getTransactions(
+            val response = networkRepository.getTransactions(
+                network = currentNetwork,
                 address = address,
                 limit = limit,
                 fingerprint = fingerprint

@@ -39,6 +39,14 @@ class TransactionViewModel(
         updateFilteredTransactions()
     }
 
+    fun navigateToTransactionList() {
+        _uiState.update { it.copy(currentScreen = ScreenState.TRANSACTION_LIST) }
+    }
+
+    fun navigateToMain() {
+        _uiState.update { it.copy(currentScreen = ScreenState.MAIN) }
+    }
+
     fun loadTransactions() {
         if (_uiState.value.isLoading) return
 
@@ -160,6 +168,7 @@ class TransactionViewModel(
     fun selectRecentSearch(address: String) {
         _uiState.update { it.copy(walletAddress = address) }
         loadTransactions()
+        navigateToTransactionList()
     }
 
     fun deleteRecentSearch(address: String) {
@@ -174,6 +183,11 @@ class TransactionViewModel(
 
     fun clearError() {
         _uiState.update { it.copy(error = null) }
+    }
+
+    fun loadTransactionsAndNavigate() {
+        loadTransactions()
+        navigateToTransactionList()
     }
 
     private fun buildUserFriendlyErrorMessage(error: Throwable): String {
@@ -191,6 +205,7 @@ class TransactionViewModel(
 }
 
 data class TransactionUiState(
+    val currentScreen: ScreenState = ScreenState.MAIN,
     val walletAddress: String = "",
     val transactions: List<TronTransaction> = emptyList(),
     val isLoading: Boolean = false,

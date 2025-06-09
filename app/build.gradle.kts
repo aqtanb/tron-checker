@@ -74,19 +74,13 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 
-    // Networking
-    implementation(libs.retrofit)
-    implementation(libs.retrofit.gson)
-    implementation(libs.okhttp.logging)
+    implementation(libs.okhttp)
+    implementation(libs.gson)
 
     // Database
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
-
-    // Dependency Injection
-    implementation(libs.koin.android)
-    implementation(libs.koin.compose)
 
     // Coroutines
     implementation(libs.kotlinx.coroutines)
@@ -96,7 +90,6 @@ dependencies {
 
     // Navigation
     implementation(libs.androidx.navigation.compose)
-    implementation(libs.kotlinx.serialization.json)
 
     // BitcoinJ
     implementation(libs.bitcoinj)
