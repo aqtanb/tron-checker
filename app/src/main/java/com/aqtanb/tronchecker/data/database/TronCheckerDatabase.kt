@@ -11,7 +11,7 @@ import com.aqtanb.tronchecker.data.database.entity.TransactionEntity
 
 @Database(
     entities = [SearchHistoryEntity::class, TransactionEntity::class],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 abstract class TronCheckerDatabase : RoomDatabase() {

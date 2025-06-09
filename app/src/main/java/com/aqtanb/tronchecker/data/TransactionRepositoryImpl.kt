@@ -1,5 +1,6 @@
 package com.aqtanb.tronchecker.data
 
+import android.util.Log
 import com.aqtanb.tronchecker.data.database.dao.TransactionDao
 import com.aqtanb.tronchecker.data.database.entity.toDomain
 import com.aqtanb.tronchecker.data.database.entity.toEntity
@@ -31,6 +32,7 @@ class TransactionRepositoryImpl(
         try {
             val currentNetwork = networkCache[address] ?: let {
                 val detected = networkRepository.detectNetwork(address)
+                Log.i("TronChecker", "Network detected: ${detected.displayName}")
                 networkCache[address] = detected
                 detected
             }
@@ -43,65 +45,93 @@ class TransactionRepositoryImpl(
             )
 
             if (response.success) {
-                val transactions = response.data.map { raw ->
-                    val contract = raw.raw_data.contract.firstOrNull()
-                    val value = contract?.parameter?.value
-                    val firstRet = raw.ret?.firstOrNull()
+                Log.d("TronChecker", "Processing ${response.data.size}/${response.data.size} valid transactions")
 
-                    val displayAmount = when {
-                        value?.amount != null -> {
-                            val trx = value.amount / 1_000_000.0
-                            "${"%.6f".format(trx).trimEnd('0').trimEnd('.')} TRX"
+                val mappedTransactions = response.data.mapNotNull { raw ->
+                    try {
+                        val rawData = raw.raw_data
+                        if (rawData == null) {
+                            Log.w("TronChecker", "Failed to parse transaction: raw_data is null")
+                            return@mapNotNull null
                         }
-                        else -> "Contract Call"
+
+                        val contract = rawData.contract.firstOrNull()
+                        if (contract == null) {
+                            Log.w("TronChecker", "Failed to parse transaction: contract is null or empty")
+                            return@mapNotNull null
+                        }
+
+                        val value = contract.parameter.value
+                        val firstRet = raw.ret?.firstOrNull()
+
+                        val displayAmount = when {
+                            value.amount != null -> {
+                                val trx = value.amount / 1_000_000.0
+                                "${"%.6f".format(trx).trimEnd('0').trimEnd('.')} TRX"
+                            }
+                            else -> "Contract Call"
+                        }
+
+                        val status = when {
+                            firstRet?.contractRet == "SUCCESS" || firstRet?.contractRet == null -> TransactionStatus.SUCCESS
+                            else -> TransactionStatus.FAILED
+                        }
+
+                        val transactionType = mapContractTypeToTransactionType(contract.type)
+
+                        TronTransaction(
+                            txID = raw.txID,
+                            blockNumber = raw.blockNumber,
+                            from = convertHexToTronAddress(value.owner_address ?: ""),
+                            to = convertHexToTronAddress(value.to_address ?: ""),
+                            displayAmount = displayAmount,
+                            status = status,
+                            type = transactionType,
+                            rawAmount = value.amount
+                        )
+                    } catch (e: Exception) {
+                        Log.w("TronChecker", "Failed to parse transaction: ${e.message}")
+                        null
                     }
+                }
 
-                    val status = when {
-                        firstRet?.contractRet == "SUCCESS" || firstRet?.contractRet == null -> TransactionStatus.SUCCESS
-                        else -> TransactionStatus.FAILED
-                    }
-
-                    val transactionType = mapContractTypeToTransactionType(contract?.type)
-
-                    TronTransaction(
-                        txID = raw.txID,
-                        blockNumber = raw.blockNumber,
-                        from = convertHexToTronAddress(value?.owner_address ?: ""),
-                        to = convertHexToTronAddress(value?.to_address ?: ""),
-                        displayAmount = displayAmount,
-                        status = status,
-                        type = transactionType,
-                        rawAmount = value?.amount
-                    )
-                }.filter { applyFilters(it, filters) }
+                Log.d("TronChecker", "Mapped ${mappedTransactions.size} transactions, ${mappedTransactions.size} after filtering")
 
                 if (fingerprint == null) {
                     transactionDao.deleteTransactionsByAddress(address)
                     transactionDao.insertTransactions(
-                        transactions.map { it.toEntity(address) }
+                        mappedTransactions.map { it.toEntity(address) }
                     )
                 }
-                emit(Result.success(Pair(transactions, response.meta.fingerprint)))
+
+                emit(Result.success(Pair(mappedTransactions, response.meta.fingerprint)))
+
             } else {
-                loadFromCache(address, filters)
+                Log.w("TronChecker", "API call failed, loading from cache")
+                loadFromCache(address)
             }
-        } catch (_: Exception) {
-            loadFromCache(address, filters)
+        } catch (e: Exception) {
+            Log.e("TronChecker", "Repository error: ${e.message}")
+            loadFromCache(address)
         }
     }
 
     private suspend fun FlowCollector<Result<Pair<List<TronTransaction>, String?>>>.loadFromCache(
-        address: String,
-        filters: TransactionFilters
+        address: String
     ) {
-        val cached = transactionDao.getTransactionsByAddress(address)
-            .map { it.toDomain() }
-            .filter { applyFilters(it, filters) }
+        try {
+            val cached = transactionDao.getTransactionsByAddress(address)
+                .map { it.toDomain() }
 
-        if (cached.isNotEmpty()) {
-            emit(Result.success(Pair(cached, null)))
-        } else {
-            emit(Result.failure(Exception("No cached data")))
+            if (cached.isNotEmpty()) {
+                Log.i("TronChecker", "Loaded ${cached.size} transactions from cache")
+                emit(Result.success(Pair(cached, null)))
+            } else {
+                emit(Result.failure(Exception("No cached data available")))
+            }
+        } catch (e: Exception) {
+            Log.e("TronChecker", "Cache loading failed: ${e.message}")
+            emit(Result.failure(e))
         }
     }
 
@@ -116,26 +146,10 @@ class TransactionRepositoryImpl(
 
     override suspend fun getCurrentNetwork(): TronNetwork? = networkCache.values.lastOrNull()
 
-    private fun applyFilters(transaction: TronTransaction, filters: TransactionFilters): Boolean {
-        if (filters.type != TransactionType.ALL) {
-            if (transaction.type != filters.type) return false
-        }
-
-        if (filters.minAmount != null || filters.maxAmount != null) {
-            val amount = transaction.rawAmount?.div(1_000_000.0) ?: 0.0
-            if (filters.minAmount != null && amount < filters.minAmount) return false
-            if (filters.maxAmount != null && amount > filters.maxAmount) return false
-        }
-
-        return true
-    }
-
     private fun mapContractTypeToTransactionType(contractType: String?): TransactionType {
         return when (contractType) {
             "TransferContract" -> TransactionType.TRX_TRANSFER
-            "TransferAssetContract", "TriggerSmartContract" -> {
-                TransactionType.TOKEN_TRANSFER
-            }
+            "TransferAssetContract", "TriggerSmartContract" -> TransactionType.TOKEN_TRANSFER
             null, "" -> TransactionType.CONTRACT_CALL
             else -> TransactionType.CONTRACT_CALL
         }
@@ -148,11 +162,9 @@ class TransactionRepositoryImpl(
                 hexAddress.startsWith("T") -> hexAddress
                 hexAddress.length == 42 && hexAddress.matches(Regex("[0-9a-fA-F]+")) -> {
                     val hexBytes = hexAddress.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
-
                     val hash1 = MessageDigest.getInstance("SHA-256").digest(hexBytes)
                     val hash2 = MessageDigest.getInstance("SHA-256").digest(hash1)
                     val checksum = hash2.take(4).toByteArray()
-
                     val addressWithChecksum = hexBytes + checksum
                     Base58.encode(addressWithChecksum)
                 }

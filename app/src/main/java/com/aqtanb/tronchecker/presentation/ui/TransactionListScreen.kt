@@ -9,13 +9,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -24,14 +23,16 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.aqtanb.tronchecker.domain.model.TransactionStatus
+import com.aqtanb.tronchecker.domain.model.TransactionType
 import com.aqtanb.tronchecker.domain.model.TronNetwork
 import com.aqtanb.tronchecker.domain.model.TronTransaction
 import kotlinx.serialization.Serializable
@@ -45,9 +46,7 @@ import kotlinx.serialization.Serializable
 fun TransactionListScreen(
     transactions: List<TronTransaction>,
     isLoading: Boolean,
-    hasMore: Boolean,
     detectedNetwork: TronNetwork?,
-    onLoadMore: () -> Unit,
     onBack: () -> Unit
 ) {
     BackHandler {
@@ -94,15 +93,6 @@ fun TransactionListScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                if (transactions.isNotEmpty()) {
-                    item {
-                        TransactionCountCard(
-                            count = transactions.size,
-                            hasMore = hasMore
-                        )
-                    }
-                }
-
                 itemsIndexed(
                     items = transactions,
                     key = { _, transaction -> transaction.txID }
@@ -113,23 +103,35 @@ fun TransactionListScreen(
                     )
                 }
 
-                if (hasMore) {
+                if (isLoading && transactions.isNotEmpty()) {
                     item {
-                        Button(
-                            onClick = onLoadMore,
+                        Card(
                             modifier = Modifier.fillMaxWidth(),
-                            enabled = !isLoading
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                            )
                         ) {
-                            if (isLoading) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(24.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
-                                    CircularProgressIndicator(modifier = Modifier.width(16.dp))
-                                    Text("Loading...")
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(20.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                    Text(
+                                        text = "Loading more transactions...",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                 }
-                            } else {
-                                Text("Load More")
                             }
                         }
                     }
@@ -139,51 +141,60 @@ fun TransactionListScreen(
     }
 }
 
+@Preview(showBackground = true)
 @Composable
-private fun TransactionCountCard(
-    count: Int,
-    hasMore: Boolean
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-        ),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
-                Text(
-                    text = if (hasMore) "Found: $count+" else "Found: $count",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+fun TransactionListScreenPreview() {
+    MaterialTheme {
+        TransactionListScreen(
+            transactions = listOf(
+                TronTransaction(
+                    txID = "tx1",
+                    blockNumber = 12345L,
+                    from = "TRX7n34kANEWvgjKqmz3nkJSS3bk9KSJz",
+                    to = "TRX8m45lBOPXwhlLrnx4oJTP4bl0LTKMa",
+                    displayAmount = "100 TRX",
+                    status = TransactionStatus.SUCCESS,
+                    type = TransactionType.TRX_TRANSFER,
+                    rawAmount = 100000000L
+                ),
+                TronTransaction(
+                    txID = "tx2",
+                    blockNumber = 12346L,
+                    from = "TRX9o56mDQRYxjmMsoy5pKUQ5cm1MVLNb",
+                    to = "TRX1p67nESWZykpNtuq6qLVR6dn2OWMOc",
+                    displayAmount = "Contract Call",
+                    status = TransactionStatus.PENDING,
+                    type = TransactionType.CONTRACT_CALL,
+                    rawAmount = null
                 )
-                Text(
-                    text = if (hasMore) "transactions (scroll for more)" else "transactions total",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            ),
+            isLoading = false,
+            detectedNetwork = null,
+            onBack = {}
+        )
+    }
+}
 
-            Surface(
-                shape = RoundedCornerShape(8.dp),
-                color = MaterialTheme.colorScheme.primary
-            ) {
-                Text(
-                    text = if (hasMore) "$count+" else "$count",
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimary
+@Preview(showBackground = true)
+@Composable
+fun TransactionListScreenLoadingPreview() {
+    MaterialTheme {
+        TransactionListScreen(
+            transactions = listOf(
+                TronTransaction(
+                    txID = "tx1",
+                    blockNumber = 12345L,
+                    from = "TRX7n34kANEWvgjKqmz3nkJSS3bk9KSJz",
+                    to = "TRX8m45lBOPXwhlLrnx4oJTP4bl0LTKMa",
+                    displayAmount = "100 TRX",
+                    status = TransactionStatus.SUCCESS,
+                    type = TransactionType.TRX_TRANSFER,
+                    rawAmount = 100000000L
                 )
-            }
-        }
+            ),
+            isLoading = true,
+            detectedNetwork = TronNetwork.MAINNET,
+            onBack = {}
+        )
     }
 }

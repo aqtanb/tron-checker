@@ -37,18 +37,16 @@ fun TronCheckerNavHost(
                 onClearAddress = viewModel::clearAddress,
                 onClearError = viewModel::clearError,
                 onLoadClick = {
-                    viewModel.loadTransactions {
-                        navController.navigate(
-                            TransactionListRoute(uiState.walletAddress)
-                        )
-                    }
+                    viewModel.loadTransactions()
+                    navController.navigate(
+                        TransactionListRoute(uiState.walletAddress)
+                    )
                 },
                 onRecentClick = { address ->
-                    viewModel.selectRecentSearch(address) {
-                        navController.navigate(
-                            TransactionListRoute(address)
-                        )
-                    }
+                    viewModel.selectRecentSearch(address)
+                    navController.navigate(
+                        TransactionListRoute(address)
+                    )
                 },
                 onDeleteRecent = viewModel::deleteRecentSearch
             )
@@ -57,10 +55,8 @@ fun TronCheckerNavHost(
             TransactionListScreen(
                 transactions = uiState.transactions,
                 isLoading = uiState.isLoading,
-                hasMore = uiState.hasMore,
                 detectedNetwork = uiState.detectedNetwork,
-                onLoadMore = viewModel::loadMore,
-                onBack = { navController.popBackStack() }
+                onBack = navController::popBackStack
             )
         }
     }

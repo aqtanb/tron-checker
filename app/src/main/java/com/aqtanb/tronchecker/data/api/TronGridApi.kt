@@ -9,7 +9,7 @@ interface TronGridApi {
     @GET("v1/accounts/{address}/transactions")
     suspend fun getTransactions(
         @Path("address") address: String,
-        @Query("limit") limit: Int = 20,
+        @Query("limit") limit: Int,
         @Query("fingerprint") fingerprint: String? = null
     ): TronGridResponse
 }

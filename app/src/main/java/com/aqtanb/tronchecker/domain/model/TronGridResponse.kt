@@ -10,10 +10,11 @@ data class Meta(
     val fingerprint: String? = null
 )
 
+@Suppress("PropertyName")
 data class TronTransactionRaw(
     val txID: String,
     val block_timestamp: Long,
-    val raw_data: RawData,
+    val raw_data: RawData?,
     val ret: List<Ret>? = null,
     val blockNumber: Long
 )
@@ -31,6 +32,7 @@ data class Parameter(
     val value: Value
 )
 
+@Suppress("PropertyName")
 data class Value(
     val amount: Long? = null,
     val owner_address: String? = null,
