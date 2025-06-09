@@ -10,6 +10,7 @@ import com.aqtanb.tronchecker.domain.model.TransactionType
 import com.aqtanb.tronchecker.domain.model.TronNetwork
 import com.aqtanb.tronchecker.domain.model.TronTransaction
 import com.aqtanb.tronchecker.domain.usecase.GetTransactionsUseCase
+import com.aqtanb.tronchecker.presentation.util.ErrorHandler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,7 +32,14 @@ class TransactionViewModel(
     private var isAutoLoading = false
 
     fun updateAddress(address: String) {
-        _uiState.update { it.copy(walletAddress = address) }
+        _uiState.update {
+            it.copy(
+                walletAddress = address,
+                transactions = if (address != it.walletAddress) emptyList() else it.transactions,
+                detectedNetwork = if (address != it.walletAddress) null else it.detectedNetwork,
+                error = null
+            )
+        }
     }
 
     fun updateFilters(filters: TransactionFilters) {
@@ -44,15 +52,32 @@ class TransactionViewModel(
     }
 
     fun navigateToMain() {
-        _uiState.update { it.copy(currentScreen = ScreenState.MAIN) }
+        _uiState.update {
+            it.copy(
+                currentScreen = ScreenState.MAIN,
+                transactions = emptyList(),
+                detectedNetwork = null,
+                error = null
+            )
+        }
     }
+
 
     fun loadTransactions() {
         if (_uiState.value.isLoading) return
 
         viewModelScope.launch {
             Log.i("TronChecker", "Starting transaction load for ${_uiState.value.walletAddress}")
-            _uiState.update { it.copy(isLoading = true, error = null) }
+
+            _uiState.update {
+                it.copy(
+                    isLoading = true,
+                    error = null,
+                    transactions = emptyList(),
+                    detectedNetwork = null,
+                    hasMore = true
+                )
+            }
 
             searchHistoryDao.insertSearch(
                 SearchHistoryEntity(address = _uiState.value.walletAddress)
@@ -112,7 +137,7 @@ class TransactionViewModel(
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
-                                error = buildUserFriendlyErrorMessage(error)
+                                error = ErrorHandler.buildUserFriendlyMessage(error)
                             )
                         }
                     }
@@ -124,7 +149,7 @@ class TransactionViewModel(
             _uiState.update {
                 it.copy(
                     isLoading = false,
-                    error = "Failed to load transactions: ${e.message}"
+                    error = ErrorHandler.buildUserFriendlyMessage(e)
                 )
             }
         }
@@ -156,9 +181,11 @@ class TransactionViewModel(
             }
 
             if (filters.minAmount != null || filters.maxAmount != null) {
-                val amount = transaction.rawAmount?.div(1_000_000.0) ?: 0.0
-                if (filters.minAmount != null && amount < filters.minAmount) return@filter false
-                if (filters.maxAmount != null && amount > filters.maxAmount) return@filter false
+                val rawAmount = transaction.rawAmount ?: 0L
+                val trxAmount = rawAmount / 1_000_000.0
+
+                if (filters.minAmount != null && trxAmount < filters.minAmount) return@filter false
+                if (filters.maxAmount != null && trxAmount > filters.maxAmount) return@filter false
             }
 
             true
@@ -166,7 +193,13 @@ class TransactionViewModel(
     }
 
     fun selectRecentSearch(address: String) {
-        _uiState.update { it.copy(walletAddress = address) }
+        _uiState.update {
+            it.copy(
+                walletAddress = address,
+                transactions = emptyList(),
+                error = null
+            )
+        }
         loadTransactions()
         navigateToTransactionList()
     }
@@ -188,19 +221,6 @@ class TransactionViewModel(
     fun loadTransactionsAndNavigate() {
         loadTransactions()
         navigateToTransactionList()
-    }
-
-    private fun buildUserFriendlyErrorMessage(error: Throwable): String {
-        return when {
-            error.message?.contains("network", ignoreCase = true) == true ->
-                "Network error. Please check your internet connection."
-            error.message?.contains("timeout", ignoreCase = true) == true ->
-                "Request timed out. Please try again."
-            error.message?.contains("not found", ignoreCase = true) == true ->
-                "No transactions found for this address."
-            else ->
-                "Failed to load transactions. Please try again."
-        }
     }
 }
 
