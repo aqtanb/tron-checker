@@ -8,12 +8,15 @@ import kotlinx.coroutines.flow.Flow
 interface TransactionRepository {
     fun getTransactions(
         address: String,
+        network: TronNetwork,
         limit: Int,
         fingerprint: String?,
         filters: TransactionFilters
     ): Flow<Result<Pair<List<TronTransaction>, String?>>>
 
-    suspend fun getCachedTransactions(address: String): List<TronTransaction>
-    suspend fun clearCache(address: String)
-    suspend fun getCurrentNetwork(): TronNetwork?
+    suspend fun getCachedTransactions(address: String, network: TronNetwork): List<TronTransaction>
+
+    suspend fun clearCache(address: String, network: TronNetwork)
+
+    suspend fun cacheTransactions(address: String, network: TronNetwork, transactions: List<TronTransaction>)
 }

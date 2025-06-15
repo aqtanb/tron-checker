@@ -18,20 +18,20 @@ class TransactionRepositoryImpl(
     private val networkRepository: NetworkRepository,
     private val transactionDao: TransactionDao
 ) : TransactionRepository {
-    private val networkCache = mutableMapOf<String, TronNetwork>()
     private val mapper = TransactionMapper()
 
     override fun getTransactions(
         address: String,
+        network: TronNetwork,
         limit: Int,
         fingerprint: String?,
         filters: TransactionFilters
     ): Flow<Result<Pair<List<TronTransaction>, String?>>> = flow {
         try {
-            val currentNetwork = getOrDetectNetwork(address)
+            Log.i("TronChecker", "Loading transactions from ${network.displayName}")
 
             val response = networkRepository.getTransactions(
-                network = currentNetwork,
+                network = network,
                 address = address,
                 limit = limit,
                 fingerprint = fingerprint
@@ -44,63 +44,50 @@ class TransactionRepositoryImpl(
 
                 Log.d("TronChecker", "Mapped ${mappedTransactions.size} transactions, ${mappedTransactions.size} after filtering")
 
-                if (fingerprint == null) {
-                    cacheTransactions(address, mappedTransactions)
-                }
-
                 emit(Result.success(Pair(mappedTransactions, response.meta.fingerprint)))
 
             } else {
                 Log.w("TronChecker", "API call failed, loading from cache")
-                loadFromCache(address)
+                loadFromCache(address, network)
             }
         } catch (e: Exception) {
             Log.e("TronChecker", "Repository error: ${e.message}")
-            loadFromCache(address)
+            loadFromCache(address, network)
         }
     }
 
-    private suspend fun getOrDetectNetwork(address: String): TronNetwork {
-        return networkCache[address] ?: let {
-            val detected = networkRepository.detectNetwork(address)
-            Log.i("TronChecker", "Network detected: ${detected.displayName}")
-            networkCache[address] = detected
-            detected
-        }
+    override suspend fun cacheTransactions(address: String, network: TronNetwork, transactions: List<TronTransaction>) {
+        transactionDao.deleteTransactionsByAddressAndNetwork(address, network.name)
+        transactionDao.insertTransactions(transactions.map { it.toEntity(address, network) })
+        Log.d("TronChecker", "Cached ${transactions.size} transactions for $address on ${network.displayName}")
     }
 
-    private suspend fun cacheTransactions(address: String, transactions: List<TronTransaction>) {
-        transactionDao.deleteTransactionsByAddress(address)
-        transactionDao.insertTransactions(transactions.map { it.toEntity(address) })
+
+    override suspend fun getCachedTransactions(address: String, network: TronNetwork): List<TronTransaction> {
+        return transactionDao.getTransactionsByAddressAndNetwork(address, network.name).map { it.toDomain() }
+    }
+
+    override suspend fun clearCache(address: String, network: TronNetwork) {
+        transactionDao.deleteTransactionsByAddressAndNetwork(address, network.name)
     }
 
     private suspend fun FlowCollector<Result<Pair<List<TronTransaction>, String?>>>.loadFromCache(
-        address: String
+        address: String,
+        network: TronNetwork
     ) {
         try {
-            val cached = transactionDao.getTransactionsByAddress(address)
+            val cached = transactionDao.getTransactionsByAddressAndNetwork(address, network.name)
                 .map { it.toDomain() }
 
             if (cached.isNotEmpty()) {
-                Log.i("TronChecker", "Loaded ${cached.size} transactions from cache")
+                Log.i("TronChecker", "Loaded ${cached.size} transactions from ${network.displayName} cache")
                 emit(Result.success(Pair(cached, null)))
             } else {
-                emit(Result.failure(Exception("No cached data available")))
+                emit(Result.failure(Exception("No cached data available for ${network.displayName}")))
             }
         } catch (e: Exception) {
             Log.e("TronChecker", "Cache loading failed: ${e.message}")
             emit(Result.failure(e))
         }
     }
-
-    override suspend fun getCachedTransactions(address: String): List<TronTransaction> {
-        return transactionDao.getTransactionsByAddress(address).map { it.toDomain() }
-    }
-
-    override suspend fun clearCache(address: String) {
-        transactionDao.deleteTransactionsByAddress(address)
-        networkCache.remove(address)
-    }
-
-    override suspend fun getCurrentNetwork(): TronNetwork? = networkCache.values.lastOrNull()
 }

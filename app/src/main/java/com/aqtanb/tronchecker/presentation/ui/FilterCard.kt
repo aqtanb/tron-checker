@@ -39,6 +39,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.aqtanb.tronchecker.domain.model.TransactionFilters
 import com.aqtanb.tronchecker.domain.model.TransactionType
+import com.aqtanb.tronchecker.domain.model.TronNetwork
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -155,6 +156,70 @@ fun FilterCard(
                 }
             }
 
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "Network",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                var expandedNetwork by remember { mutableStateOf(false) }
+
+                ExposedDropdownMenuBox(
+                    expanded = expandedNetwork,
+                    onExpandedChange = { expandedNetwork = it }
+                ) {
+                    OutlinedTextField(
+                        value = filters.selectedNetwork.displayName,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Select Network") },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(
+                                expanded = expandedNetwork
+                            )
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable, true),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                        )
+                    )
+
+                    ExposedDropdownMenu(
+                        expanded = expandedNetwork,
+                        onDismissRequest = { expandedNetwork = false }
+                    ) {
+                        TronNetwork.entries.forEach { network ->
+                            DropdownMenuItem(
+                                text = {
+                                    Column {
+                                        Text(
+                                            text = network.displayName,
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                        Text(
+                                            text = getNetworkDescription(network),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                },
+                                onClick = {
+                                    onFiltersChange(filters.copy(selectedNetwork = network))
+                                    expandedNetwork = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
                     "Amount Range (TRX)",
@@ -258,8 +323,19 @@ private fun getTypeDescription(type: TransactionType): String {
     }
 }
 
+private fun getNetworkDescription(network: TronNetwork): String {
+    return when (network) {
+        TronNetwork.MAINNET -> "Main TRON blockchain network"
+        TronNetwork.NILE_TESTNET -> "Test network for development"
+    }
+}
+
 private fun buildActiveFiltersText(filters: TransactionFilters): String {
     val parts = mutableListOf<String>()
+
+    if (filters.selectedNetwork != TronNetwork.MAINNET) {
+        parts.add("Network: ${filters.selectedNetwork.displayName}")
+    }
 
     if (filters.type != TransactionType.ALL) {
         parts.add("Type: ${filters.type.displayName}")

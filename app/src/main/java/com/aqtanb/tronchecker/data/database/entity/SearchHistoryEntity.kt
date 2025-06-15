@@ -5,7 +5,6 @@ import androidx.room.PrimaryKey
 
 @Entity(tableName = "search_history")
 data class SearchHistoryEntity(
-    @PrimaryKey
-    val address: String,
+    @PrimaryKey val address: String,
     val timestamp: Long = System.currentTimeMillis()
 )

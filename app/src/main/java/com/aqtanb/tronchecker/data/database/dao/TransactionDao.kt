@@ -11,9 +11,12 @@ interface TransactionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTransactions(transactions: List<TransactionEntity>)
 
-    @Query("SELECT * FROM transactions WHERE walletAddress = :address ORDER BY blockNumber DESC")
-    suspend fun getTransactionsByAddress(address: String): List<TransactionEntity>
+    @Query("SELECT * FROM transactions WHERE walletAddress = :address AND network = :network ORDER BY blockNumber DESC")
+    suspend fun getTransactionsByAddressAndNetwork(address: String, network: String): List<TransactionEntity>
 
-    @Query("DELETE FROM transactions WHERE walletAddress = :address")
-    suspend fun deleteTransactionsByAddress(address: String)
+    @Query("DELETE FROM transactions WHERE walletAddress = :address AND network = :network")
+    suspend fun deleteTransactionsByAddressAndNetwork(address: String, network: String)
+
+    @Query("SELECT COUNT(*) FROM transactions WHERE walletAddress = :address AND network = :network")
+    suspend fun getCachedTransactionCount(address: String, network: String): Int
 }

@@ -43,8 +43,17 @@ class TransactionViewModel(
     }
 
     fun updateFilters(filters: TransactionFilters) {
+        val previousNetwork = _uiState.value.filters.selectedNetwork
+        val newNetwork = filters.selectedNetwork
+
         _uiState.update { it.copy(filters = filters) }
-        updateFilteredTransactions()
+
+        if (previousNetwork != newNetwork && _uiState.value.walletAddress.isNotEmpty()) {
+            Log.i("TronChecker", "Network changed from $previousNetwork to $newNetwork, reloading...")
+            loadTransactions()
+        } else {
+            updateFilteredTransactions()
+        }
     }
 
     fun navigateToTransactionList() {
@@ -67,20 +76,23 @@ class TransactionViewModel(
         if (_uiState.value.isLoading) return
 
         viewModelScope.launch {
-            Log.i("TronChecker", "Starting transaction load for ${_uiState.value.walletAddress}")
+            val address = _uiState.value.walletAddress
+            val selectedNetwork = _uiState.value.filters.selectedNetwork
+
+            Log.i("TronChecker", "Starting transaction load for $address on ${selectedNetwork.displayName}")
 
             _uiState.update {
                 it.copy(
                     isLoading = true,
                     error = null,
                     transactions = emptyList(),
-                    detectedNetwork = null,
+                    detectedNetwork = selectedNetwork,
                     hasMore = true
                 )
             }
 
             searchHistoryDao.insertSearch(
-                SearchHistoryEntity(address = _uiState.value.walletAddress)
+                SearchHistoryEntity(address = address)
             )
 
             currentFingerprint = null
@@ -91,28 +103,31 @@ class TransactionViewModel(
         }
     }
 
+
     private suspend fun loadNextBatch() {
         if (!isAutoLoading) return
 
         try {
+            val selectedNetwork = _uiState.value.filters.selectedNetwork
+
             getTransactionsUseCase(
                 address = _uiState.value.walletAddress,
+                network = selectedNetwork,
                 fingerprint = currentFingerprint,
-                filters = TransactionFilters()
+                filters = _uiState.value.filters
             ).collect { result ->
                 result.fold(
                     onSuccess = { (newTransactions, fingerprint) ->
-                        Log.d("TronChecker", "Loaded ${newTransactions.size} transactions (batch)")
+                        Log.d("TronChecker", "Loaded ${newTransactions.size} transactions (batch) from ${selectedNetwork.displayName}")
 
                         currentFingerprint = fingerprint
                         allTransactions.addAll(newTransactions)
 
-                        val network = getTransactionsUseCase.getCurrentNetwork()
                         updateFilteredTransactions()
 
                         _uiState.update { state ->
                             state.copy(
-                                detectedNetwork = network,
+                                detectedNetwork = selectedNetwork,
                                 hasMore = fingerprint != null,
                                 error = null
                             )
@@ -127,33 +142,27 @@ class TransactionViewModel(
                         } else {
                             val filteredCount = getFilteredTransactions().size
                             Log.i("TronChecker", "Auto-loading complete: $filteredCount filtered, ${allTransactions.size} total")
+
+                            cacheAllTransactions(selectedNetwork)
+
                             isAutoLoading = false
                             _uiState.update { it.copy(isLoading = false) }
                         }
                     },
                     onFailure = { error ->
                         Log.e("TronChecker", "Failed to load transactions: ${error.message}")
-                        isAutoLoading = false
-                        _uiState.update {
-                            it.copy(
-                                isLoading = false,
-                                error = ErrorHandler.buildUserFriendlyMessage(error)
-                            )
-                        }
+
+                        tryLoadCachedData(selectedNetwork)
                     }
                 )
             }
         } catch (e: Exception) {
             Log.e("TronChecker", "Exception during batch load: ${e.message}")
-            isAutoLoading = false
-            _uiState.update {
-                it.copy(
-                    isLoading = false,
-                    error = ErrorHandler.buildUserFriendlyMessage(e)
-                )
-            }
+            val selectedNetwork = _uiState.value.filters.selectedNetwork
+            tryLoadCachedData(selectedNetwork)
         }
     }
+
 
     private fun shouldContinueLoading(fingerprint: String?, newTransactionsCount: Int): Boolean {
         if (fingerprint == null) return false
@@ -221,6 +230,58 @@ class TransactionViewModel(
     fun loadTransactionsAndNavigate() {
         loadTransactions()
         navigateToTransactionList()
+    }
+
+    private suspend fun cacheAllTransactions(network: TronNetwork) {
+        if (allTransactions.isNotEmpty()) {
+            try {
+                val address = _uiState.value.walletAddress
+                getTransactionsUseCase.cacheTransactions(address, network, allTransactions)
+                Log.i("TronChecker", "Auto-loading complete and cached for ${network.displayName}")
+            } catch (e: Exception) {
+                Log.e("TronChecker", "Failed to cache transactions: ${e.message}")
+            }
+        }
+    }
+
+    private suspend fun tryLoadCachedData(network: TronNetwork) {
+        try {
+            val address = _uiState.value.walletAddress
+            val cachedTransactions = getTransactionsUseCase.getCachedTransactions(address, network)
+
+            if (cachedTransactions.isNotEmpty()) {
+                Log.i("TronChecker", "Loaded ${cachedTransactions.size} cached transactions from ${network.displayName}")
+
+                allTransactions.clear()
+                allTransactions.addAll(cachedTransactions)
+                updateFilteredTransactions()
+
+                isAutoLoading = false
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        error = "No internet connection. Showing cached data from ${network.displayName}."
+                    )
+                }
+            } else {
+                isAutoLoading = false
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        error = "No internet connection and no cached data available for ${network.displayName}."
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("TronChecker", "Failed to load cached data: ${e.message}")
+            isAutoLoading = false
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    error = ErrorHandler.buildUserFriendlyMessage(e)
+                )
+            }
+        }
     }
 }
 
